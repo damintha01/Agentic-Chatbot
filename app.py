@@ -63,7 +63,7 @@ def build_topic_title(source_text):
     cleaned_text = " ".join(str(source_text).split()).strip()
 
     if not cleaned_text:
-        return "New Chat"
+        return "New Chat "
 
     generated_title = ""
 
