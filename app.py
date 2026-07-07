@@ -627,110 +627,6 @@ sync_pending_interrupt(
 # =============================================================
 
 
-# Determine whether the current thread is waiting on human approval
-pending_hitl = st.session_state.get(
-    "pending_hitl"
-)
-
-current_thread_has_pending_hitl = (
-    pending_hitl is not None
-    and pending_hitl.get("thread_id")
-    == st.session_state["thread_id"]
-)
-
-
-# ========================= Visible prompt composer =========================
-
-st.markdown(
-    "<div class='app-eyebrow' style='margin-top: 2rem;'>Prompt Composer</div>",
-    unsafe_allow_html=True
-)
-
-user_input = st.text_area(
-    "Message",
-    placeholder="Type your prompt here",
-    height=92,
-    key="composer_text",
-    label_visibility="collapsed",
-    disabled=current_thread_has_pending_hitl,
-)
-
-uploaded_file = st.file_uploader(
-    "Attach a PDF",
-    type=["pdf"],
-    key="composer_file",
-    label_visibility="collapsed",
-    disabled=current_thread_has_pending_hitl,
-)
-
-send_clicked = st.button(
-    "Send message",
-    type="primary",
-    use_container_width=True,
-    disabled=current_thread_has_pending_hitl,
-)
-
-
-# Process the uploaded PDF if one was attached
-if send_clicked and uploaded_file:
-
-    # Store the temporary file path
-    temporary_file_path = None
-
-    try:
-
-        # Save the uploaded PDF as a temporary local file
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".pdf"
-        ) as temporary_file:
-
-            temporary_file.write(
-                uploaded_file.getvalue()
-            )
-
-            temporary_file_path = temporary_file.name
-
-        # Call the existing backend RAG ingestion function
-        with st.spinner(
-            f"Processing {uploaded_file.name}..."
-        ):
-
-            ingest_rag_document(
-                temporary_file_path
-            )
-
-        # Display PDF processing confirmation
-        st.toast(
-            f"{uploaded_file.name} processed successfully.",
-            icon="✅"
-        )
-
-    except Exception as error:
-
-        # Display PDF processing error
-        st.error(
-            f"PDF processing failed: {error}"
-        )
-
-    finally:
-
-        # Delete the temporary PDF after indexing
-        if (
-            temporary_file_path
-            and os.path.exists(temporary_file_path)
-        ):
-            os.remove(temporary_file_path)
-
-
-# Default user input value
-if send_clicked:
-    user_input = user_input.strip()
-
-    if not user_input:
-        st.session_state["composer_text"] = ""
-
-
 # ========================= Sidebar threading feature =========================
 
 st.sidebar.markdown(
@@ -876,6 +772,100 @@ if current_thread_has_pending_hitl:
 
             # Send "no" back to interrupt()
             resume_hitl_execution("no")
+
+
+
+# ========================= Visible prompt composer =========================
+
+st.markdown(
+    "<div class='app-eyebrow' style='margin-top: 2rem;'>Prompt Composer</div>",
+    unsafe_allow_html=True
+)
+
+user_input = st.text_area(
+    "Message",
+    placeholder="Type your prompt here",
+    height=92,
+    key="composer_text",
+    label_visibility="collapsed",
+    disabled=current_thread_has_pending_hitl,
+)
+
+uploaded_file = st.file_uploader(
+    "Attach a PDF",
+    type=["pdf"],
+    key="composer_file",
+    label_visibility="collapsed",
+    disabled=current_thread_has_pending_hitl,
+)
+
+send_clicked = st.button(
+    "Send message",
+    type="primary",
+    use_container_width=True,
+    disabled=current_thread_has_pending_hitl,
+)
+
+
+# Process the uploaded PDF if one was attached
+if send_clicked and uploaded_file:
+
+    # Store the temporary file path
+    temporary_file_path = None
+
+    try:
+
+        # Save the uploaded PDF as a temporary local file
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".pdf"
+        ) as temporary_file:
+
+            temporary_file.write(
+                uploaded_file.getvalue()
+            )
+
+            temporary_file_path = temporary_file.name
+
+        # Call the existing backend RAG ingestion function
+        with st.spinner(
+            f"Processing {uploaded_file.name}..."
+        ):
+
+            ingest_rag_document(
+                temporary_file_path
+            )
+
+        # Display PDF processing confirmation
+        st.toast(
+            f"{uploaded_file.name} processed successfully.",
+            icon="✅"
+        )
+
+    except Exception as error:
+
+        # Display PDF processing error
+        st.error(
+            f"PDF processing failed: {error}"
+        )
+
+    finally:
+
+        # Delete the temporary PDF after indexing
+        if (
+            temporary_file_path
+            and os.path.exists(temporary_file_path)
+        ):
+            os.remove(temporary_file_path)
+
+
+# Default user input value
+if send_clicked:
+    user_input = user_input.strip()
+
+    if not user_input:
+        st.session_state["composer_text"] = ""
+
 
 # Run this block after the user submits a text message
 if send_clicked and user_input:
