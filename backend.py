@@ -18,6 +18,7 @@ from langchain_community.vectorstores import FAISS
 import os 
 from typing import Any
 from langgraph.types import interrupt, Command
+import re
 
 
 load_dotenv()
@@ -385,10 +386,99 @@ chatbot = graph.compile(checkpointer=checkpoint)
 
 # Helper functions for Streamlit frontend
 def get_all_threads():
-    all_threads = set()
-    for ckpt in checkpoint.list(None):
-        all_threads.add(ckpt.config['configurable']['thread_id'])
+    latest_threads = {}
 
-    return list(all_threads)
+    for ckpt in checkpoint.list(None):
+        thread_id = ckpt.config["configurable"]["thread_id"]
+        checkpoint_timestamp = ckpt.checkpoint.get("ts", "")
+
+        previous_timestamp = latest_threads.get(thread_id)
+
+        if previous_timestamp is None or checkpoint_timestamp > previous_timestamp:
+            latest_threads[thread_id] = checkpoint_timestamp
+
+    return [
+        thread_id
+        for thread_id, _ in sorted(
+            latest_threads.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    ]
+
+
+def _fallback_thread_title(user_text: str) -> str:
+    stop_words = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "be",
+        "can",
+        "could",
+        "do",
+        "for",
+        "give",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "me",
+        "my",
+        "of",
+        "on",
+        "please",
+        "show",
+        "tell",
+        "the",
+        "to",
+        "what",
+        "where",
+        "with",
+        "would",
+        "you",
+    }
+
+    words = re.findall(r"[A-Za-z0-9]+", user_text.lower())
+    meaningful_words = [word for word in words if word not in stop_words]
+
+    if not meaningful_words:
+        meaningful_words = words[:4]
+
+    if not meaningful_words:
+        return "New Chat"
+
+    title = " ".join(meaningful_words[:4]).strip()
+    return title.title()
+
+
+def generate_thread_title(user_text: str) -> str:
+    cleaned_text = " ".join(str(user_text).split()).strip()
+
+    if not cleaned_text:
+        return "New Chat"
+
+    title_prompt = [
+        SystemMessage(
+            content=(
+                "Create a short, specific conversation title in 4 words or fewer. "
+                "Focus on the main topic only. Return only the title, with no quotes, punctuation, or extra text."
+            )
+        ),
+        HumanMessage(content=cleaned_text),
+    ]
+
+    try:
+        response = llm.invoke(title_prompt)
+        title = " ".join(str(response.content).split()).strip().strip('"\'')
+    except Exception:
+        title = ""
+
+    if not title:
+        title = _fallback_thread_title(cleaned_text)
+
+    return title or "New Chat"
 
 

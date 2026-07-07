@@ -1,4 +1,4 @@
-from agentic_chatbot_backend import (
+from backend import (
     chatbot,
     get_all_threads,
     ingest_rag_document
@@ -17,6 +17,7 @@ import streamlit as st
 import uuid
 import tempfile
 import os
+import re
 
 
 # Generate a unique thread ID for each new conversation
@@ -25,11 +26,157 @@ def generate_thread_id():
 
 
 # Add a new thread ID to the conversation list
-def add_thread(thread_id):
+def add_thread(thread_id, to_front=False):
 
     # Prevent the same thread from being added multiple times
-    if thread_id not in st.session_state["chat_threads"]:
-        st.session_state["chat_threads"].append(thread_id)
+    if thread_id in st.session_state["chat_threads"]:
+
+        if to_front:
+            st.session_state["chat_threads"].remove(thread_id)
+            st.session_state["chat_threads"].insert(0, thread_id)
+
+    else:
+
+        if to_front:
+            st.session_state["chat_threads"].insert(0, thread_id)
+
+        else:
+            st.session_state["chat_threads"].append(thread_id)
+
+
+def get_first_user_message(thread_id):
+
+    messages = load_conversation(thread_id)
+
+    for message in messages:
+        if isinstance(message, HumanMessage):
+            content = str(message.content).strip()
+
+            if content:
+                return content
+
+    return ""
+
+
+def build_topic_title(source_text):
+
+    cleaned_text = " ".join(str(source_text).split()).strip()
+
+    if not cleaned_text:
+        return "New Chat"
+
+    generated_title = ""
+
+    try:
+        import backend as backend_module
+
+        generated_title = " ".join(
+            str(backend_module.generate_thread_title(cleaned_text)).split()
+        ).strip()
+
+    except Exception:
+        generated_title = ""
+
+    if generated_title:
+
+        normalized_title = generated_title.lower().strip(" .,:;!?\"'")
+
+        if normalized_title.startswith("about "):
+            generated_title = generated_title[6:].strip()
+
+        if normalized_title in {"this", "about", "new chat"}:
+            generated_title = ""
+
+        elif len(generated_title.split()) == 1 and len(generated_title) < 4:
+            generated_title = ""
+
+    if generated_title:
+        return generated_title
+
+    stop_words = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "be",
+        "can",
+        "could",
+        "do",
+        "for",
+        "give",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "me",
+        "my",
+        "of",
+        "on",
+        "please",
+        "show",
+        "tell",
+        "the",
+        "to",
+        "what",
+        "where",
+        "with",
+        "would",
+        "you",
+    }
+
+    words = re.findall(r"[A-Za-z0-9]+", cleaned_text.lower())
+    meaningful_words = [word for word in words if word not in stop_words]
+
+    if not meaningful_words:
+        meaningful_words = words[:4]
+
+    if not meaningful_words:
+        return "New Chat"
+
+    return " ".join(meaningful_words[:4]).title()
+
+
+def get_thread_title(thread_id, source_text=None):
+
+    if "thread_titles" not in st.session_state:
+        st.session_state["thread_titles"] = {}
+
+    cached_title = st.session_state["thread_titles"].get(thread_id)
+
+    if cached_title:
+        return cached_title
+
+    title_source = source_text or get_first_user_message(thread_id)
+
+    if not title_source:
+        title = "New Chat"
+
+    else:
+        title = build_topic_title(title_source)
+
+    st.session_state["thread_titles"][thread_id] = title
+    return title
+
+
+def update_thread_title(thread_id, source_text):
+
+    if not source_text:
+        return get_thread_title(thread_id)
+
+    if "thread_titles" not in st.session_state:
+        st.session_state["thread_titles"] = {}
+
+    current_title = st.session_state["thread_titles"].get(thread_id)
+
+    if current_title and current_title != "New Chat":
+        return current_title
+
+    title = build_topic_title(source_text)
+
+    st.session_state["thread_titles"][thread_id] = title
+    return title
 
 
 # Create a completely new chat conversation
@@ -47,7 +194,10 @@ def reset_chat():
     # =============================================================
 
     # Add the new thread to the conversation list
-    add_thread(st.session_state["thread_id"])
+    add_thread(st.session_state["thread_id"], to_front=True)
+
+    # Reset the visible title for the fresh thread
+    st.session_state["thread_titles"][st.session_state["thread_id"]] = "New Chat"
 
 
 # Load a previous conversation from the LangGraph checkpointer
@@ -306,12 +456,132 @@ def resume_hitl_execution(decision):
 # ========================= Page configuration =========================
 
 st.set_page_config(
-    page_title="Agentic Chatbot",
+    page_title="Agentic Chatbot with LangGraph",
     page_icon="🤖"
 )
 
-# Display the main application title
-st.title("Agentic Chatbot with LangGraph")
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background:
+                radial-gradient(circle at top, rgba(22, 70, 44, 0.28) 0%, rgba(7, 12, 10, 0.1) 28%, rgba(3, 5, 4, 1) 65%),
+                linear-gradient(180deg, #050706 0%, #030403 100%);
+            color: #eef7ef;
+        }
+
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #07120d 0%, #040706 100%);
+            border-right: 1px solid rgba(72, 210, 124, 0.18);
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] label {
+            color: #e5f7e8;
+        }
+
+        .app-shell {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0.75rem 0 2rem;
+        }
+
+        .app-hero {
+            padding: 1rem 0 1.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-eyebrow,
+        .sidebar-eyebrow {
+            color: #2fe17a;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            margin-bottom: 0.55rem;
+        }
+
+        .app-hero h1 {
+            color: #f2faf3;
+            font-size: clamp(2.8rem, 5vw, 4.8rem);
+            line-height: 0.98;
+            margin: 0;
+            text-shadow: 0 0 28px rgba(45, 224, 118, 0.16);
+        }
+
+        .app-subtitle {
+            color: rgba(218, 238, 222, 0.7);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            max-width: 58rem;
+            margin-top: 0.95rem;
+        }
+
+        section[data-testid="stSidebar"] button,
+        .stButton button {
+            border-radius: 14px;
+            border: 1px solid rgba(80, 216, 128, 0.22);
+            background: linear-gradient(180deg, rgba(19, 31, 24, 0.95) 0%, rgba(9, 14, 11, 0.98) 100%);
+            color: #effaf0;
+            transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        section[data-testid="stSidebar"] button:hover,
+        .stButton button:hover {
+            border-color: rgba(80, 216, 128, 0.55);
+            box-shadow: 0 0 0 1px rgba(80, 216, 128, 0.15), 0 10px 30px rgba(0, 0, 0, 0.28);
+            transform: translateY(-1px);
+        }
+
+        div[data-testid="stChatMessage"] {
+            border: 1px solid rgba(72, 210, 124, 0.12);
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(10, 14, 12, 0.96) 0%, rgba(7, 9, 8, 0.96) 100%);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+        }
+
+        div[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
+        div[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] li {
+            color: #f0f7f1;
+        }
+
+        div[data-testid="stChatMessage"] svg,
+        div[data-testid="stChatMessage"] span {
+            color: #3bf08b;
+        }
+
+        [data-testid="stChatInput"] {
+            border-top: 1px solid rgba(72, 210, 124, 0.16);
+            backdrop-filter: blur(10px);
+        }
+
+        [data-testid="stChatInput"] textarea {
+            background: rgba(8, 12, 9, 0.92) !important;
+            color: #f3fbf4 !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <div class="app-shell">
+        <div class="app-hero">
+            <div class="app-eyebrow">Enterprise Conversational Workspace</div>
+            <h1>Agentic Chatbot with LangGraph</h1>
+            <div class="app-subtitle">
+                Dark operational interface with green system accents, topic-based conversation history,
+                and tool-aware assistance.
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # Create message_history when the app runs for the first time
@@ -329,6 +599,11 @@ if "chat_threads" not in st.session_state:
     st.session_state["chat_threads"] = get_all_threads()
 
 
+# Store the sidebar titles for conversations
+if "thread_titles" not in st.session_state:
+    st.session_state["thread_titles"] = {}
+
+
 # ========================= HITL ADDED =========================
 
 # Store the currently pending human approval request
@@ -339,7 +614,7 @@ if "pending_hitl" not in st.session_state:
 
 
 # Add the current thread to the conversation list
-add_thread(st.session_state["thread_id"])
+add_thread(st.session_state["thread_id"], to_front=True)
 
 
 # ========================= HITL ADDED =========================
@@ -354,8 +629,14 @@ sync_pending_interrupt(
 
 # ========================= Sidebar threading feature =========================
 
-# Display the sidebar title
-st.sidebar.title("My Conversations")
+st.sidebar.markdown(
+    """
+    <div class="sidebar-eyebrow">Workspace</div>
+    <h2>My Conversations</h2>
+    <p>Newest threads appear first. Each entry is labeled by topic instead of a raw ID.</p>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # Create a button for starting a new conversation
@@ -368,14 +649,20 @@ if st.sidebar.button("New Chat"):
     st.rerun()
 
 
-# Display all conversation threads in reverse order
-# This shows the newest conversation first
-for thread_id in st.session_state["chat_threads"][::-1]:
+# Display all conversation threads from newest to oldest
+for thread_id in st.session_state["chat_threads"]:
+
+    thread_label = get_thread_title(thread_id)
+
+    if len(thread_label) > 34:
+        thread_label = f"{thread_label[:31].rstrip()}..."
 
     # Create one sidebar button for every conversation
     if st.sidebar.button(
-        str(thread_id),
-        key=thread_id
+        thread_label,
+        key=thread_id,
+        type="primary" if thread_id == st.session_state["thread_id"] else "secondary",
+        use_container_width=True
     ):
 
         # Set the selected thread as the current thread
@@ -709,6 +996,12 @@ if user_input:
         "role": "assistant",
         "content": ai_message
     })
+
+    # Promote the thread label from a placeholder to a topic title
+    update_thread_title(
+        st.session_state["thread_id"],
+        user_input
+    )
 
     # ========================= HITL ADDED =========================
 
