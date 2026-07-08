@@ -167,20 +167,6 @@ The application uses external AI and tool providers. Add these variables to `.en
 6. Ask questions about the document, current events, weather, stocks, or math.
 7. If the assistant requests approval for a sensitive action, use the approval buttons shown in the interface.
 
-## Screenshots
-
-Add your screenshots here:
-
-```markdown
-![Main interface](docs/screenshots/main-ui.png)
-![Conversation history](docs/screenshots/conversation-history.png)
-![PDF ingestion](docs/screenshots/pdf-upload.png)
-```
-
-## Demo
-
-- **Live demo:** https://your-live-demo-link.example.com
-- **Demo video:** https://your-video-link.example.com
 
 ## API Documentation
 
