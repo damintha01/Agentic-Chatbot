@@ -6,8 +6,8 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge)](https://www.langchain.com/)
 [![Gemini](https://img.shields.io/badge/OpenAI%20%2F%20Gemini-202124?style=for-the-badge)](https://ai.google.dev/)
-[![GitHub Stars](https://img.shields.io/github/stars/<OWNER>/<REPO>?style=for-the-badge)](https://github.com/<OWNER>/<REPO>/stargazers)
-[![Last Commit](https://img.shields.io/github/last-commit/<OWNER>/<REPO>?style=for-the-badge)](https://github.com/<OWNER>/<REPO>/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/damintha01/Agentic-Chatbot?style=for-the-badge)](https://github.com/damintha01/Agentic-Chatbot/stargazers)
+[![Last Commit](https://img.shields.io/github/last-commit/damintha01/Agentic-Chatbot?style=for-the-badge)](https://github.com/damintha01/Agentic-Chatbot/commits/main)
 
 > A modern, tool-aware AI assistant built with LangGraph and Streamlit for conversation memory, PDF-based RAG, web search, calculations, weather lookups, and human-in-the-loop approvals.
 
@@ -93,6 +93,7 @@ Agentic-Chatbot/
 ├── Dockerfile               # Container build file
 ├── requirements.txt         # Python dependencies
 ├── README.md                # Project documentation
+├── LICENSE                  # MIT license
 ├── chatbot.db               # SQLite checkpoint database (runtime-generated)
 ├── faiss_db/                # Local FAISS vector store for RAG
 │   └── index.faiss          # Saved embeddings index
@@ -104,8 +105,8 @@ Agentic-Chatbot/
 ### 1) Clone the repository
 
 ```bash
-git clone https://github.com/<OWNER>/<REPO>.git
-cd <REPO>
+git clone https://github.com/damintha01/Agentic-Chatbot.git
+cd Agentic-Chatbot
 ```
 
 ### 2) Create a virtual environment
@@ -298,11 +299,11 @@ Please keep changes focused and follow the existing style in `app.py` and `backe
 
 ## License
 
-This project is currently provided without a formal license. Add one before public release if you want to define reuse terms.
+This project is licensed under the [MIT License](LICENSE).
 
 ## Author
 
-- **Your Name** - add your GitHub profile here
+- **Damintha Deshan Wijekoon** - [@damintha01](https://github.com/damintha01)
 
 ## Acknowledgements
 

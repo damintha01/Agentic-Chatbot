@@ -589,6 +589,15 @@ if "message_history" not in st.session_state:
     st.session_state["message_history"] = []
 
 
+# Clear the composer text before the widget is instantiated this run.
+# (Setting st.session_state["composer_text"] directly after the text_area
+# widget has been created raises a StreamlitAPIException, so a flag is used
+# to defer the reset to the start of the next run.)
+if st.session_state.get("clear_composer_text"):
+    st.session_state["composer_text"] = ""
+    st.session_state["clear_composer_text"] = False
+
+
 # Create a thread ID when the app runs for the first time
 if "thread_id" not in st.session_state:
     st.session_state["thread_id"] = generate_thread_id()
@@ -864,7 +873,8 @@ if send_clicked:
     user_input = user_input.strip()
 
     if not user_input:
-        st.session_state["composer_text"] = ""
+        st.session_state["clear_composer_text"] = True
+        st.rerun()
 
 
 # Run this block after the user submits a text message
@@ -1006,7 +1016,7 @@ if send_clicked and user_input:
     })
 
     # Clear the visible composer after sending
-    st.session_state["composer_text"] = ""
+    st.session_state["clear_composer_text"] = True
     st.session_state.pop("composer_file", None)
 
     # Promote the thread label from a placeholder to a topic title
@@ -1017,13 +1027,8 @@ if send_clicked and user_input:
 
     # ========================= HITL ADDED =========================
 
-    # Approval controls are rendered earlier in the script.
-    # Rerun so they appear immediately after interrupt().
-    if (
-        st.session_state.get("pending_hitl") is not None
-        and st.session_state["pending_hitl"].get("thread_id")
-        == st.session_state["thread_id"]
-    ):
-        st.rerun()
+    # Rerun so the composer clears and, if applicable, approval controls
+    # (rendered earlier in the script) appear immediately after interrupt().
+    st.rerun()
 
     # =============================================================
